@@ -13,6 +13,8 @@ import {
   Banknote,
 } from "lucide-react";
 
+// Updated: Button-based payment method selector (no dropdowns) - v2.0
+
 interface PaymentSettings {
   upiId: string;
   upiMobile: string;
@@ -44,6 +46,7 @@ export function PaymentMethodSelector({
   paymentSettings,
   amount,
 }: PaymentMethodSelectorProps) {
+  // Force component refresh - timestamp: ${Date.now()}
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
