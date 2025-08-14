@@ -1,0 +1,1296 @@
+// Prisma Schema for MySQL - Production Ready
+// Single file with all models and enums
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums for type safety and better data integrity
+enum AdminRole {
+  ADMIN
+  SUPERADMIN
+}
+
+enum TournamentFormat {
+  T20
+  T15
+  T12
+  T10
+  T8
+  T6
+  CUSTOM
+}
+
+enum CompetitionType {
+  LEAGUE
+  KNOCKOUT
+  ONE_DAY_KNOCKOUT
+  GROUP_KNOCKOUT
+  ROUND_ROBIN
+  AUCTION_BASED_FIXED_TEAMS
+  AUCTION_BASED_GROUPS
+  DOUBLE_ELIMINATION
+  SWISS_SYSTEM
+  VILLAGE_CHAMPIONSHIP
+  CITY_CHAMPIONSHIP
+  INTER_VILLAGE
+  INTER_CITY
+  FRIENDLY_SERIES
+  KNOCKOUT_PLUS_FINAL
+  BEST_OF_THREE
+  BEST_OF_FIVE
+  AUCTION_LEAGUE
+  AUCTION_KNOCKOUT
+  CUSTOM
+}
+
+enum TournamentStatus {
+  UPCOMING
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  ONGOING
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum PlayerPosition {
+  BATSMAN
+  BOWLER
+  ALL_ROUNDER
+  WICKET_KEEPER
+}
+
+enum PlayerExperience {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  PROFESSIONAL
+}
+
+enum BattingStyle {
+  RIGHT_HANDED
+  LEFT_HANDED
+}
+
+enum BowlingStyle {
+  RIGHT_ARM_FAST
+  LEFT_ARM_FAST
+  RIGHT_ARM_MEDIUM
+  LEFT_ARM_MEDIUM
+  RIGHT_ARM_SPIN
+  LEFT_ARM_SPIN
+  RIGHT_ARM_ORTHODOX
+  LEFT_ARM_ORTHODOX
+  WICKET_KEEPER
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CONFIRMED
+  CANCELLED
+  WAITLISTED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIAL
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+  BANK_TRANSFER
+  CHEQUE
+  ONLINE
+}
+
+enum RegistrationType {
+  PUBLIC
+  ADMIN
+}
+
+enum MatchStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELLED
+  POSTPONED
+  ABANDONED
+  NO_RESULT
+}
+
+enum MatchType {
+  LEAGUE
+  QUALIFIER
+  ELIMINATOR
+  QUARTER_FINAL
+  SEMI_FINAL
+  FINAL
+  FRIENDLY
+  PRACTICE
+}
+
+enum WinType {
+  RUNS
+  WICKETS
+  NO_RESULT
+  ABANDONED
+  WALKOVER
+}
+
+enum TossDecision {
+  BAT
+  BOWL
+}
+
+enum ScoringMethod {
+  BOOK
+  ONLINE_CIRHEROES
+  ONLINE_CRICCLUBS
+  MANUAL
+}
+
+enum ImageCategory {
+  TOURNAMENT
+  TEAM
+  PLAYER
+  FACILITY
+  GALLERY
+  MATCH
+  TRAINING
+  EVENT
+  POSTER
+  TROPHY
+  VENUE
+}
+
+// Admin/User Management
+model Admin {
+  id        String    @id @default(cuid())
+  name      String?   // Full name of the admin/user (optional for migration)
+  username  String    @unique
+  email     String    @unique
+  password  String
+  role      AdminRole @default(ADMIN)
+  isActive  Boolean   @default(true)
+  lastLogin DateTime?
+  
+  // Relations
+  sessions  UserSession[]
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// Tournament Management
+model Tournament {
+  id                   String            @id @default(cuid())
+  name                 String
+  description          String?           @db.Text // Increased to TEXT (65,535 characters)
+  format               TournamentFormat  // Using enum for overs type (T20, T15, etc.)
+  competitionType      CompetitionType   @default(LEAGUE) // Using enum for tournament structure
+  customFormat         String?
+  venue                String
+  venueAddress         String?           // Additional venue details for custom locations  
+  customMapsLink       String?           // Custom Google Maps link for venue
+  venueLatitude        Float?            // GPS coordinates for venue
+  venueLongitude       Float?            // GPS coordinates for venue
+  venueCapacity        Int?              // Seating/standing capacity
+  venueFacilities      String?           // JSON: ["Parking", "Washrooms", "Canteen", "Commentary"]
+  multiVenue           Boolean           @default(false) // Support for multi-venue tournaments
+  additionalVenues     String?           // JSON: [{"name": "...", "address": "...", "lat": ..., "lng": ...}]
+  
+  startDate            DateTime
+  endDate              DateTime?
+  registrationDeadline DateTime?
+  maxTeams             Int?
+  entryFee             Int               @default(0)
+  totalPrizePool       Int               @default(0)
+  ageLimit             String?
+  teamSize             Int               @default(11)
+  substitutes          Int               @default(4)
+  overs                Int?              // Number of overs per side
+  status               TournamentStatus  @default(UPCOMING) // Using enum
+  rules                String?           @db.Text // Increased to TEXT (65,535 characters)
+  requirements         String?           @db.Text // Increased to TEXT for JSON string
+  
+  // Auto-match arrangement settings
+  autoArrangeMatches   Boolean           @default(false) // Enable auto match arrangement
+  groupSize            Int?              // For group stage tournaments (4, 6, 8 teams per group)
+  qualifiersPerGroup   Int?              // How many teams qualify from each group
+  matchDuration        Int?              // Expected match duration in minutes
+  breakBetweenMatches  Int?              // Break time between matches in minutes
+  maxMatchesPerDay     Int?              // Maximum matches per day
+  preferredMatchTimes  String?           // JSON: ["09:00", "14:00", "18:00"] - preferred start times
+  
+  // Auction-specific settings
+  isAuctionBased       Boolean           @default(false) // Is this an auction-based tournament
+  auctionDate          DateTime?         // Date of player auction
+  auctionBudget        Int?              // Base auction budget per team
+  auctionCurrency      String?           @default("INR") // Currency for auction
+  totalGroups          Int?              // Number of groups (e.g., 3 groups)
+  teamsPerGroup        Int?              // Teams per group (e.g., 4 teams)
+  matchesPerTeam       Int?              // Matches each team plays (e.g., 3 matches)
+  groupNames           String?           // JSON: ["Group A", "Group B", "Group C"]
+  auctionRules         String?           @db.Text // Auction-specific rules
+  playersPool          String?           @db.Text // JSON: Available players for auction
+  auctionStatus        String?           @default("PENDING") // PENDING, ONGOING, COMPLETED
+  
+  // IPL-style auction enhancements
+  auctionTeamCount     Int?              // Number of teams in auction
+  auctionTeamNames     String?           @db.Text // JSON: ["Mumbai Indians", "Chennai Super Kings", ...]
+  groupsOptional       Boolean           @default(true) // Groups can be enabled/disabled later
+  pointsBased          Boolean           @default(true) // Use points instead of real money
+  playerPoolSize       Int?              // Expected number of players
+  minPlayersPerTeam    Int?              @default(11) // Minimum players per team
+  maxPlayersPerTeam    Int?              @default(15) // Maximum players per team
+  minPlayerPoints      Int?              @default(500) // Minimum points per player
+  ownerParticipationCost Int?            @default(500) // Points deducted if owner plays
+  retentionAllowed     Boolean           @default(false) // Allow teams to retain players
+  tradingEnabled       Boolean           @default(false) // Allow player trading
+  playerEntryFee       Int?              @default(0) // Individual player entry fee
+  
+  // Team ownership/sponsorship
+  teamEntryFee         Int?              @default(0) // Fee each team owner/sponsor pays
+  requireTeamOwners    Boolean           @default(true) // Require team owners for auction tournaments
+  ownershipMode        String?           @default("REGISTRATION") // REGISTRATION, ADMIN_ASSIGN
+  maxTeamsPerOwner     Int?              @default(1) // How many teams one owner can own
+  ownerVerificationRequired Boolean      @default(true) // Require verification of team owners
+  teamOwnersData       String?           @db.Text // JSON: Team owner assignments
+  entryFeeType         String?           @default("BOTH") // TEAM, PLAYER, BOTH
+  
+  // Organizers (JSON array of organizer objects)
+  organizers           String?           // JSON: [{"name": "...", "role": "...", "contact": "..."}]
+  
+  // Results - Support for multiple positions
+  winners              String?           // JSON: [{"position": 1, "teamId": "...", "teamName": "..."}, ...]
+  winner               String?           // Deprecated - keeping for backward compatibility
+  runnerUp             String?           // Deprecated - keeping for backward compatibility
+  thirdPlace           String?           // Deprecated - keeping for backward compatibility
+  otherPrizes          String?           @db.Text // JSON: [{"prize": "Best Bowler", "winner": "..."}]
+  
+  // Google Drive Integration
+  googleDriveFolderId  String?
+  
+  // Relationships
+  matches              Match[]
+  registrations        TeamRegistration[]
+  images               TournamentImage[]
+  photoSections        TournamentPhotoSection[]
+  venues               Venue[]           // Multi-venue support
+  auctionTeams         AuctionTeam[]     // Auction-based teams
+  auctionPlayers       AuctionPlayer[]   // Players available for auction
+  teamOwners           TeamOwner[]       // Team owners for auction tournaments
+  paymentMethods       TournamentPaymentMethod[] // Tournament-specific payment methods
+  auctionRounds        AuctionRound[]    // Live auction rounds
+  auctionBids          AuctionBid[]      // All auction bids
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// Team Management
+model Team {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  
+  // Captain Details
+  captainName  String?
+  captainPhone String?
+  captainEmail String?
+  captainAge   Int?
+  
+  // Team Location
+  homeGround   String?
+  city         String?           // Team's base city/village
+  state        String?           @default("Gujarat")
+  
+  // Team Details
+  logoUrl      String?
+  teamColor    String?           // Primary team color
+  foundedYear  Int?
+  
+  // Stats
+  totalMatches Int?     @default(0)
+  totalWins    Int?     @default(0)
+  totalLosses  Int?     @default(0)
+  
+  // Relationships
+  tournaments  TeamRegistration[]
+  homeMatches  Match[]            @relation("HomeTeam")
+  awayMatches  Match[]            @relation("AwayTeam")
+  players      Player[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([name, city])
+}
+
+// Auction-based Team Management (for auction tournaments)
+model AuctionTeam {
+  id              String    @id @default(cuid())
+  tournamentId    String
+  tournament      Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  // Team Details
+  name            String
+  color           String?    // Team color/jersey color
+  logoUrl         String?    // Team logo
+  groupName       String?    // Which group this team belongs to
+  groupPosition   Int?       // Position within the group
+  
+  // Captain/Owner Details
+  ownerName       String?    // Team owner (person who bids)
+  ownerPhone      String?
+  ownerEmail      String?
+  captainName     String?    // Playing captain
+  
+  // Auction Details
+  totalBudget     Int?       // Total auction budget
+  spentAmount     Int?       @default(0) // Amount spent in auction
+  remainingBudget Int?       // Remaining budget
+  playersCount    Int?       @default(0) // Number of players bought
+  
+  // Performance
+  matchesPlayed   Int?       @default(0)
+  matchesWon      Int?       @default(0)
+  matchesLost     Int?       @default(0)
+  points          Int?       @default(0) // League points
+  netRunRate      Float?     // Net run rate
+  
+  // Squad
+  players         AuctionPlayer[] // Players bought in auction
+  
+  // Relationships with matches
+  homeMatches     Match[]    @relation("AuctionHomeTeam")
+  awayMatches     Match[]    @relation("AuctionAwayTeam")
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  @@unique([tournamentId, name])
+  @@index([tournamentId, groupName])
+}
+
+// Players in Auction-based tournaments
+model AuctionPlayer {
+  id              String      @id @default(cuid())
+  tournamentId    String
+  tournament      Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  auctionTeamId   String?     // Null if unsold
+  auctionTeam     AuctionTeam? @relation(fields: [auctionTeamId], references: [id])
+  
+  // Player Details
+  name            String
+  age             Int?
+  phone           String?
+  email           String?
+  city            String?
+  dateOfBirth     DateTime?
+  
+  // Location Details
+  address         String?
+  state           String?     @default("Gujarat")
+  pincode         String?
+  
+  // Family Details
+  fatherName      String?
+  
+  // Emergency Contact
+  emergencyContact String?
+  emergencyPhone   String?
+  emergencyRelation String?
+  
+  // Cricket Details
+  position        PlayerPosition?
+  battingStyle    BattingStyle?
+  bowlingStyle    BowlingStyle?
+  experience      PlayerExperience?
+  
+  // Auction Details
+  basePrice       Int?        @default(0) // Base auction price
+  soldPrice       Int?        // Final sold price (null if unsold)
+  auctionRound    Int?        // Which round they were sold
+  auctionStatus   String?     @default("AVAILABLE") // AVAILABLE, APPROVED, SOLD, UNSOLD, REJECTED
+  entryFeePaid    Boolean     @default(false) // Payment tracking for admin purposes only (not required for auction)
+  
+  // Performance Stats
+  totalMatches    Int?        @default(0)
+  totalRuns       Int?        @default(0)
+  totalWickets    Int?        @default(0)
+  bestPerformance String?     // Best performance description
+  
+  // Additional Info
+  profileImageUrl String?     // Player photo URL
+  specialSkills   String?     // Special skills/notes
+  
+  // Auction System Relations
+  bids            AuctionBid[] // All bids for this player
+  currentRound    AuctionRound? @relation("CurrentPlayer") // If currently being auctioned
+  round           AuctionRound? @relation("RoundPlayers", fields: [roundId], references: [id])
+  roundId         String?     // Which round this player belongs to
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@unique([tournamentId, name, phone])
+  @@index([tournamentId, auctionStatus])
+  @@index([auctionTeamId])
+}
+
+// Player Management
+model Player {
+  id              String            @id @default(cuid())
+  name            String
+  email           String?
+  phone           String?
+  dateOfBirth     DateTime?
+  
+  // Location Details for better identification
+  address         String?
+  city            String?           // City/Village for identification
+  state           String?           @default("Gujarat")
+  pincode         String?
+  
+  // Cricket Details
+  position        PlayerPosition?   // Using enum
+  battingStyle    BattingStyle?     // Using enum
+  bowlingStyle    BowlingStyle?     // Using enum
+  experience      PlayerExperience? // Using enum
+  
+  // Team Association
+  teamId          String?
+  team            Team?    @relation(fields: [teamId], references: [id])
+  jerseyNumber    Int?
+  isSubstitute    Boolean  @default(false)
+  
+  // Personal Details
+  age             Int?
+  fatherName      String?           // For better identification
+  
+  // Emergency Contact
+  emergencyContact String?
+  emergencyPhone   String?
+  emergencyRelation String?
+  
+  // Profile & Stats
+  profileImageUrl String?
+  isActive        Boolean  @default(true)
+  totalMatches    Int?     @default(0)
+  totalRuns       Int?     @default(0)
+  totalWickets    Int?     @default(0)
+  
+  // Metadata for search and identification
+  searchKeywords  String?           // For faster searching (name + city + father)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Unique constraint for better player identification
+  @@unique([name, city, phone])
+  @@index([name, city])
+  @@index([phone])
+}
+
+// Venue Management
+model Venue {
+  id               String       @id @default(cuid())
+  name             String
+  address          String?
+  city             String?
+  state            String?      @default("Gujarat")
+  pincode          String?
+  
+  // GPS Coordinates
+  latitude         Float?
+  longitude        Float?
+  
+  // Venue Details
+  capacity         Int?         // Seating/standing capacity
+  groundType       String?      // Turf, Matting, Concrete, etc.
+  pitchCount       Int?         @default(1) // Number of pitches available
+  floodlights      Boolean      @default(false)
+  coveredStands    Boolean      @default(false)
+  
+  // Facilities (JSON array)
+  facilities       String?      // ["Parking", "Washrooms", "Canteen", "Commentary Box", "Dressing Rooms"]
+  
+  // Contact and Booking
+  contactPerson    String?
+  contactPhone     String?
+  contactEmail     String?
+  bookingRequired  Boolean      @default(false)
+  costPerDay       Int?         // Cost per day if applicable
+  
+  // Maps Integration
+  googleMapsLink   String?
+  googlePlaceId    String?
+  
+  // Status
+  isActive         Boolean      @default(true)
+  notes            String?      @db.Text
+  
+  // Relations
+  tournaments      Tournament[]
+  matches          Match[]
+  
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  
+  @@index([city, state])
+  @@index([name])
+}
+
+// Scorer Management
+model Scorer {
+  id              String   @id @default(cuid())
+  name            String
+  email           String?
+  phone           String?
+  
+  // Location Details
+  city            String?
+  address         String?
+  
+  // Experience and Certification
+  experience      String?  // BEGINNER, INTERMEDIATE, EXPERT
+  certifications  String?  // JSON array of certifications
+  isActive        Boolean  @default(true)
+  
+  // Availability
+  availableFrom   DateTime?
+  availableTo     DateTime?
+  
+  // Statistics
+  totalMatches    Int?     @default(0)
+  
+  // Contact Information
+  emergencyContact String?
+  emergencyPhone   String?
+  
+  // Scoring Methods Proficiency
+  bookScoring     Boolean  @default(true)
+  onlineScoring   Boolean  @default(false)
+  scoringApps     String?  // JSON array of apps they can use
+  
+  // Profile
+  profileImageUrl String?
+  notes           String?  @db.Text
+  
+  // Relations
+  matches         Match[]  @relation("MatchScorer")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([name, phone])
+  @@index([name, city])
+  @@index([phone])
+}
+
+// Tournament Registration
+model TeamRegistration {
+  id           String            @id @default(cuid())
+  tournamentId String
+  teamId       String
+  
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team         Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  // Registration Details
+  registrationDate DateTime         @default(now())
+  status           RegistrationStatus @default(PENDING) // Using enum
+  paymentStatus    PaymentStatus    @default(PENDING)   // Using enum
+  paymentAmount    Int?
+  paymentMethod    PaymentMethod?   // Using enum
+  // Registration Type and Contact
+  registrationType RegistrationType // PUBLIC or ADMIN
+  contactEmail     String           // Required for notifications
+  contactPhone     String?
+  
+  // Admin Actions
+  approvedBy       String?          // Admin ID who approved
+  approvedAt       DateTime?
+  rejectedBy       String?          // Admin ID who rejected
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  
+  // Payment Details
+  transactionId    String?
+  paymentDate      DateTime?
+  paymentNotes     String?
+  
+  // Additional Info
+  specialRequests  String?
+  notes            String?          // Admin notes
+  
+  @@unique([tournamentId, teamId])
+}
+
+// Match Management
+model Match {
+  id           String      @id @default(cuid())
+  tournamentId String
+  tournament   Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  // Teams (Regular teams)
+  homeTeamId   String?
+  awayTeamId   String?
+  homeTeam     Team?        @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam     Team?        @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  
+  // Auction Teams (for auction-based tournaments)
+  auctionHomeTeamId String?
+  auctionAwayTeamId String?
+  auctionHomeTeam   AuctionTeam? @relation("AuctionHomeTeam", fields: [auctionHomeTeamId], references: [id])
+  auctionAwayTeam   AuctionTeam? @relation("AuctionAwayTeam", fields: [auctionAwayTeamId], references: [id])
+  
+  // Match Details
+  matchDate    DateTime
+  venue        String
+  venueId      String?        // FK to Venue table
+  venueDetails Venue?         @relation(fields: [venueId], references: [id])
+  matchType    MatchType   @default(LEAGUE) // Using enum
+  overs        Int?        // Number of overs
+  round        String?     // Round information (e.g., "Round 1", "Semi Final")
+  group        String?     // Group information (e.g., "Group A")
+  matchNumber  Int?        // Sequential match number
+  
+  // Result
+  status       MatchStatus @default(SCHEDULED) // Using enum
+  winnerTeamId String?
+  winType      WinType?    // Using enum
+  winMargin    String?     // "5 wickets", "10 runs"
+  
+  // Match Details
+  homeTeamScore String?
+  awayTeamScore String?
+  tossWinner    String?
+  tossDecision  TossDecision? // Using enum
+  
+  // Officials
+  umpire1         String?
+  umpire2         String?
+  scorer          String?        // Legacy field for name
+  scorerId        String?        // FK to Scorer table
+  scorerDetails   Scorer?        @relation("MatchScorer", fields: [scorerId], references: [id])
+  
+  // Scoring Information
+  scoringMethod   ScoringMethod? @default(BOOK)
+  scoringBook     String?        // Book number or identifier
+  onlineScoringId String?        // External scoring platform match ID
+  scoringNotes    String?        // Additional scoring notes
+  
+  // Venue Details
+  venueAddress    String?
+  venueMapsLink   String?        // Google Maps link
+  
+  // Report
+  matchReport     String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Image Management (Google Drive Integration)
+model TournamentImage {
+  id          String        @id @default(cuid())
+  tournamentId String
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  // Photo section relation
+  sectionId    String?
+  section      TournamentPhotoSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  
+  // Google Drive
+  googleDriveId  String?
+  googleDriveUrl String?
+  publicUrl      String?
+  
+  // Metadata
+  category    ImageCategory // Using enum
+  description String?
+  isPublic    Boolean      @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Tournament Photo Sections (Custom categories created by organizers)
+model TournamentPhotoSection {
+  id            String   @id @default(cuid())
+  tournamentId  String
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  // Section details
+  name          String   // e.g., "Final Winners", "Best Bowler Award"
+  description   String?  @db.Text
+  emoji         String?  // Optional emoji for display
+  order         Int      @default(0) // For ordering sections
+  isActive      Boolean  @default(true)
+  
+  // Google Drive folder for this section
+  googleDriveFolderId String?
+  
+  // Relations
+  images        TournamentImage[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([tournamentId])
+}
+
+// Gallery Images (General)
+model GalleryImage {
+  id          String        @id @default(cuid())
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  
+  // Google Drive
+  googleDriveId  String?
+  googleDriveUrl String?
+  publicUrl      String?
+  
+  // Metadata
+  category    ImageCategory // Using enum
+  title       String?
+  description String?
+  tags        String?       // JSON string of tags
+  isPublic    Boolean      @default(true)
+  
+  // Organization
+  uploadedBy  String?
+  isFeature   Boolean      @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// User sessions for authentication
+model UserSession {
+  id        String   @id @default(cuid())
+  adminId   String
+  token     String   @unique @db.VarChar(500)
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  isActive  Boolean  @default(true)
+  
+  // Relations
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([adminId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// Email Configuration Models
+enum EmailType {
+  REGISTRATION_NOTIFICATION
+  APPROVAL_NOTIFICATION
+  REJECTION_NOTIFICATION
+  GENERAL_NOTIFICATION
+  SYSTEM_ALERT
+}
+
+model EmailConfiguration {
+  id        String    @id @default(cuid())
+  fromName  String    @default("Tunda Sports Club")
+  fromEmail String    @default("noreply@tundasportsclub.com")
+  replyTo   String?
+  
+  // SMTP Configuration
+  smtpHost     String?
+  smtpPort     Int?
+  smtpUser     String?
+  smtpPassword String?
+  smtpSecure   Boolean @default(true)
+  
+  // Email templates settings
+  includeFooter Boolean @default(true)
+  footerText    String?
+  logoUrl       String?
+  
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@map("email_configurations")
+}
+
+model AdminEmailRecipient {
+  id          String    @id @default(cuid())
+  email       String
+  name        String?
+  role        String?   // e.g., "Head Admin", "Tournament Manager"
+  
+  // Email preferences
+  receiveRegistrations Boolean @default(true)
+  receiveApprovals     Boolean @default(true)
+  receiveRejections    Boolean @default(true)
+  receiveSystemAlerts  Boolean @default(true)
+  
+  // For CC/BCC
+  isCC        Boolean @default(false)
+  isBCC       Boolean @default(false)
+  isPrimary   Boolean @default(false)
+  
+  isActive    Boolean @default(true)
+  addedBy     String  // Admin ID who added this recipient
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("admin_email_recipients")
+}
+
+model EmailTemplate {
+  id          String    @id @default(cuid())
+  type        EmailType
+  name        String
+  subject     String
+  htmlContent String    @db.Text
+  textContent String?   @db.Text
+  
+  // Template variables documentation
+  variables   String?   // JSON array of available variables
+  
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([type, isDefault])
+  @@map("email_templates")
+}
+
+// Email Alert Management System - SUPERADMIN Only
+model EmailAlertSettings {
+  id          String  @id @default(cuid())
+  alertType   String  @unique // e.g., 'player_registration', 'team_registration', 'approval', 'rejection', 'auction_sold', etc.
+  alertName   String  // Human readable name
+  description String? // Description of what triggers this alert
+  
+  // Enable/Disable settings
+  isEnabled   Boolean @default(true)
+  
+  // Email settings for this alert type
+  enabledForPlayers    Boolean @default(true)  // Send to players/team captains
+  enabledForAdmins     Boolean @default(true)  // Send to admin recipients
+  enabledForTeamOwners Boolean @default(false) // Send to team owners (auction tournaments)
+  
+  // Template settings
+  emailTemplate String? // Reference to email template or custom content
+  
+  // Testing mode
+  testingMode Boolean @default(false) // When true, emails are logged but not sent
+  
+  // Last modified tracking
+  lastModifiedBy String? // Admin ID who last modified
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("email_alert_settings")
+}
+
+model EmailLog {
+  id          String   @id @default(cuid())
+  to          String
+  cc          String?
+  bcc         String?
+  subject     String
+  content     String   @db.Text
+  emailType   EmailType
+  
+  // Sending status
+  status      String   @default("PENDING") // PENDING, SENT, FAILED
+  error       String?
+  sentAt      DateTime?
+  
+  // Related entities
+  tournamentId     String?
+  registrationId   String?
+  adminId          String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("email_logs")
+}
+
+// Team Ownership for auction tournaments
+model TeamOwner {
+  id            String   @id @default(cuid())
+  tournamentId  String
+  teamName      String
+  teamIndex     Int
+  
+  // Owner details
+  ownerName     String
+  ownerPhone    String
+  ownerEmail    String
+  ownerCity     String?
+  
+  // Sponsor details (optional)
+  sponsorName   String?
+  sponsorContact String?
+  sponsorLogo   String?
+  
+  // Payment and verification
+  entryFeePaid  Boolean  @default(false) // Payment tracking for admin purposes only (not required for auction)
+  verified      Boolean  @default(false) // Approval status - required for auction participation
+  paymentProof  String?  // URL to payment proof image
+  auctionToken  String?  // Unique token for auction access
+  
+  // Auction System
+  totalBudget      Int     @default(30000)  // Total points budget
+  remainingBudget  Int     @default(30000)  // Remaining points
+  isParticipating  Boolean @default(false)  // If owner is playing as participant
+  minPlayersNeeded Int     @default(11)     // Minimum players needed
+  currentPlayers   Int     @default(0)      // Current number of players
+  
+  // Relations
+  tournament       Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  auctionBids      AuctionBid[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([tournamentId, teamIndex])
+  @@index([tournamentId])
+}
+
+// Live Auction Management
+model AuctionRound {
+  id              String   @id @default(cuid())
+  tournamentId    String
+  roundNumber     Int
+  roundName       String   // "Icon Players", "Premium Players", etc.
+  status          String   @default("PENDING") // PENDING, ACTIVE, COMPLETED
+  currentPlayerId String?  @unique // Currently being auctioned
+  
+  // Relations
+  tournament      Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  currentPlayer   AuctionPlayer? @relation("CurrentPlayer", fields: [currentPlayerId], references: [id])
+  players         AuctionPlayer[] @relation("RoundPlayers")
+  bids            AuctionBid[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([tournamentId, roundNumber])
+  @@index([tournamentId])
+}
+
+// Individual auction bids
+model AuctionBid {
+  id           String   @id @default(cuid())
+  tournamentId String
+  playerId     String
+  teamOwnerId  String
+  roundId      String?
+  bidAmount    Int
+  isWinning    Boolean  @default(false)
+  status       String   @default("ACTIVE") // ACTIVE, OUTBID, WINNING
+  
+  // Relations
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  player       AuctionPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  teamOwner    TeamOwner @relation(fields: [teamOwnerId], references: [id], onDelete: Cascade)
+  round        AuctionRound? @relation(fields: [roundId], references: [id])
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([tournamentId])
+  @@index([playerId])
+  @@index([teamOwnerId])
+}
+
+// Payment Settings Configuration
+model PaymentSettings {
+  id                String   @id @default(cuid())
+  
+  // UPI Settings
+  upiId             String
+  upiMobile         String
+  
+  // Bank Details
+  bankAccountName   String
+  bankAccountNumber String?
+  bankName          String?
+  ifscCode          String?
+  branchName        String?
+  
+  // QR Code
+  qrCodeUrl         String?
+  
+  // Meta
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@map("payment_settings")
+}
+
+// Tournament-specific payment methods
+model TournamentPaymentMethod {
+  id           String      @id @default(cuid())
+  tournamentId String
+  
+  // Payment method details
+  methodName   String      // "Player Registration", "Team Owner Registration", "General Registration"
+  methodType   PaymentMethodType
+  
+  // UPI Details
+  upiId        String?
+  upiMobile    String?
+  qrCodeUrl    String? @db.Text
+  
+  // Bank Details  
+  bankAccountName   String?
+  bankAccountNumber String?
+  bankName          String?
+  ifscCode          String?
+  branchName        String?
+  
+  // Pricing
+  amount       Int         // Amount in smallest currency unit (paise for INR)
+  currency     String      @default("INR")
+  
+  // Settings
+  isActive     Boolean     @default(true)
+  displayOrder Int         @default(0)
+  description  String?
+  
+  // Relations
+  tournament   Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  
+  @@index([tournamentId])
+  @@map("tournament_payment_methods")
+}
+
+enum PaymentMethodType {
+  PLAYER_REGISTRATION
+  TEAM_OWNER_REGISTRATION  
+  GENERAL_REGISTRATION
+  LATE_REGISTRATION
+}
+
+// Landing Page Content Management
+enum SectionType {
+  HERO_BANNER
+  ABOUT_US
+  FACILITIES
+  TESTIMONIALS
+  TEAM_MEMBERS
+  BOARD_MEMBERS
+  DONORS
+  SPONSORS
+  GALLERY_SHOWCASE
+  CONTACT_INFO
+  CUSTOM
+}
+
+// Landing Page Sections
+model LandingPageSection {
+  id           String      @id @default(cuid())
+  sectionType  SectionType
+  title        String
+  subtitle     String?
+  content      String?     @db.Text
+  isActive     Boolean     @default(true)
+  sortOrder    Int         @default(0)
+  
+  // Styling
+  bgColor      String?
+  textColor    String?
+  customCSS    String?     @db.Text
+  
+  // Images
+  bannerImage     String?
+  backgroundImage String?
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  
+  // Relations
+  people       Person[]
+  images       SectionImage[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@unique([sectionType])
+}
+
+// People (Team Members, Board, Donors, etc.)
+model Person {
+  id             String     @id @default(cuid())
+  name           String
+  role           String     // Manual entry: President, Vice President, Secretary, etc.
+  designation    String?
+  bio            String?    @db.Text
+  email          String?
+  phone          String?
+  
+  // Images
+  profileImage   String?
+  
+  // Social Media
+  linkedin       String?
+  twitter        String?
+  facebook       String?
+  
+  // Organization
+  department     String?
+  joinDate       DateTime?
+  isActive       Boolean    @default(true)
+  sortOrder      Int        @default(0)
+  
+  // Display Settings
+  showOnLanding  Boolean    @default(true)
+  showContact    Boolean    @default(false)
+  
+  // Relations
+  sectionId      String?
+  section        LandingPageSection? @relation(fields: [sectionId], references: [id])
+  
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+// Section-specific Images
+model SectionImage {
+  id            String             @id @default(cuid())
+  title         String?
+  description   String?
+  imageUrl      String
+  altText       String?
+  
+  // Organization
+  category      ImageCategory
+  isActive      Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  
+  // Relations
+  sectionId     String
+  section       LandingPageSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+// Enhanced Image Categories
+enum ExtendedImageCategory {
+  // Landing Page
+  HERO_BANNER
+  ABOUT_SECTION
+  FACILITIES_SHOWCASE
+  TEAM_PHOTOS
+  BOARD_MEMBERS
+  DONORS_WALL
+  SPONSORS_GALLERY
+  
+  // Tournament Related
+  TOURNAMENT
+  TOURNAMENT_POSTER
+  MATCH_PHOTOS
+  TROPHY_CEREMONY
+  
+  // General
+  FACILITY
+  TEAM
+  PLAYER
+  TRAINING
+  EVENT
+  GALLERY
+  VENUE
+  
+  // Equipment & Infrastructure
+  EQUIPMENT
+  GROUND_MAINTENANCE
+  PAVILION
+  
+  // Community
+  COMMUNITY_EVENTS
+  VOLUNTEERS
+  CELEBRATIONS
+}
+
+// Site Settings
+model SiteSettings {
+  id                String   @id @default(cuid())
+  siteName          String   @default("Tunda Sports Club")
+  tagline           String?
+  description       String?  @db.Text
+  
+  // Contact Info
+  email             String?
+  phone             String?
+  address           String?  @db.Text
+  
+  // Social Media
+  facebook          String?
+  twitter           String?
+  instagram         String?
+  youtube           String?
+  
+  // SEO
+  metaTitle         String?
+  metaDescription   String?
+  metaKeywords      String?
+  
+  // Images
+  logo              String?
+  favicon           String?
+  ogImage           String?
+  
+  // Theme
+  primaryColor      String?  @default("#1a365d")
+  secondaryColor    String?  @default("#2d3748")
+  accentColor       String?  @default("#ed8936")
+  
+  // Features
+  enableRegistration Boolean @default(true)
+  enableTournaments Boolean @default(true)
+  enableGallery     Boolean @default(true)
+  enableContact     Boolean @default(true)
+  
+  // Maintenance
+  maintenanceMode   Boolean @default(false)
+  maintenanceMessage String? @db.Text
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
