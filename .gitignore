@@ -97,7 +97,6 @@ deploy-vps.sh
 debug-*.js
 test-*.js
 admin-panel-state-test.js
-auction-live-debug.js
 check-admin-users.js
 comprehensive-admin-test.js
 debug-email-api.js
