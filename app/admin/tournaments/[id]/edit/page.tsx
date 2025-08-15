@@ -41,6 +41,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from '@/components/ui/checkbox'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 const COMPETITION_TYPES = [
   { value: 'LEAGUE', label: 'League Tournament' },

@@ -17,6 +17,7 @@ import { CalendarIcon, Plus, X, MapPin, Trophy, Users, Settings, FileText, Targe
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import RichTextEditor from '@/components/ui/rich-text-editor'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 const TOURNAMENT_FORMATS = [
   { value: 'T6', label: 'T6 (6 Overs)' },
@@ -1228,11 +1229,11 @@ const CreateTournamentPage = () => {
                                       onChange={(e) => updateTeamOwner(i, 'ownerName', e.target.value)}
                                       className="border-purple-200 text-sm"
                                     />
-                                    <Input
-                                      placeholder="Owner Phone"
+                                    <PhoneInput
+                                      label=""
                                       value={owner.ownerPhone}
-                                      onChange={(e) => updateTeamOwner(i, 'ownerPhone', e.target.value)}
-                                      className="border-purple-200 text-sm"
+                                      onChange={(value) => updateTeamOwner(i, 'ownerPhone', value)}
+                                      placeholder="Enter 10-digit mobile number"
                                     />
                                     <Input
                                       placeholder="Owner Email"

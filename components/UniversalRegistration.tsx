@@ -836,8 +836,13 @@ export default function UniversalRegistrationPage() {
         const player = teamData.players[i]
         if (!player.name.trim()) newErrors.push(`Player ${i + 1} name is required`)
         if (!player.phone.trim()) newErrors.push(`Player ${i + 1} phone is required`)
-        if (!player.email.trim()) newErrors.push(`Player ${i + 1} email is required`)
+        // Only captain (player 1) email is required, others are optional
+        if (i === 0 && !player.email.trim()) newErrors.push(`Captain email is required`)
         if (!player.position) newErrors.push(`Player ${i + 1} position is required`)
+        // Validate email format if provided
+        if (player.email && !/\S+@\S+\.\S+/.test(player.email)) {
+          newErrors.push(`${i === 0 ? 'Captain' : `Player ${i + 1}`} email format is invalid`)
+        }
       }
 
       // Check minimum team size
@@ -1860,7 +1865,7 @@ export default function UniversalRegistrationPage() {
                               </div>
                               <div>
                                 <PhoneInput
-                                  label="Captain Phone *"
+                                  label="Captain Phone"
                                   value={teamData.captainPhone}
                                   onChange={(value) => updateCaptainAndFirstPlayer('captainPhone', value)}
                                   placeholder="Enter 10-digit mobile number"
@@ -1971,13 +1976,13 @@ export default function UniversalRegistrationPage() {
                                     />
                                   </div>
                                   <div>
-                                    <Label>Email *</Label>
+                                    <Label>Email {index === 0 ? '*' : '(Optional)'}</Label>
                                     <Input
                                       type="email"
                                       value={player.email}
                                       onChange={(e) => updatePlayer(index, 'email', e.target.value)}
                                       placeholder="Email address"
-                                      required
+                                      required={index === 0} // Only captain email is required
                                       disabled={index === 0}
                                     />
                                   </div>
@@ -2112,7 +2117,7 @@ export default function UniversalRegistrationPage() {
                               </div>
                               <div>
                                 <PhoneInput
-                                  label="Contact Phone *"
+                                  label="Contact Phone"
                                   value={teamData.emergencyContact.phone}
                                   onChange={(value) => setTeamData(prev => ({
                                     ...prev,
