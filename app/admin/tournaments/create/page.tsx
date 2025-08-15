@@ -147,7 +147,7 @@ const CreateTournamentPage = () => {
     ownerVerificationRequired: false // Default false for regular tournaments (changed from true)
   })// Dynamic fields
   const [winners, setWinners] = useState([{ position: 1, prize: '' }])
-  const [organizers, setOrganizers] = useState([{ name: '', role: '', contact: '', customRole: '' }])
+  const [organizers, setOrganizers] = useState([{ name: '', role: '', phone: '', email: '', customRole: '' }])
   const [otherAwards, setOtherAwards] = useState([{ prize: '', winner: '' }])
   const [additionalVenues, setAdditionalVenues] = useState([{ name: '', address: '', mapsLink: '' }])
   const [scorers, setScorers] = useState([{ name: '', phone: '', email: '', experience: 'INTERMEDIATE', scoringMethods: ['BOOK'] }])
@@ -192,7 +192,7 @@ const CreateTournamentPage = () => {
     ))
   }
   const addOrganizer = () => {
-    setOrganizers(prev => [...prev, { name: '', role: '', contact: '', customRole: '' }])
+    setOrganizers(prev => [...prev, { name: '', role: '', phone: '', email: '', customRole: '' }])
   }
 
   const removeOrganizer = (index: number) => {
@@ -447,7 +447,8 @@ const CreateTournamentPage = () => {
         organizers: organizers.filter(o => o.name.trim()).map(org => ({
           name: org.name,
           role: org.role === 'Custom Role' ? org.customRole : org.role,
-          contact: org.contact
+          phone: org.phone,
+          email: org.email
         })),
         otherAwards: otherAwards.filter(a => a.prize.trim()),
         additionalVenues: additionalVenues.filter(v => v.name.trim()),
@@ -1542,7 +1543,7 @@ const CreateTournamentPage = () => {
                   </Button>
                 </div>                <div className="space-y-4 max-h-[400px] overflow-y-auto">
                   {organizers.map((organizer, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg">
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
                       <div className="space-y-2">
                         <Label>Name *</Label>
                         <Input
@@ -1578,12 +1579,13 @@ const CreateTournamentPage = () => {
                         )}
                       </div>
                       <div className="space-y-2 relative">
-                        <Label>Contact</Label>
+                        <Label>Phone Number</Label>
                         <div className="flex gap-2">
-                          <Input
-                            placeholder="Phone or email"
-                            value={organizer.contact}
-                            onChange={(e) => updateOrganizer(index, 'contact', e.target.value)}
+                          <PhoneInput
+                            label=""
+                            value={organizer.phone}
+                            onChange={(value) => updateOrganizer(index, 'phone', value)}
+                            placeholder="Enter 10-digit mobile number"
                           />
                           {organizers.length > 1 && (
                             <Button
@@ -1596,6 +1598,15 @@ const CreateTournamentPage = () => {
                             </Button>
                           )}
                         </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Email (Optional)</Label>
+                        <Input
+                          type="email"
+                          placeholder="Email address"
+                          value={organizer.email}
+                          onChange={(e) => updateOrganizer(index, 'email', e.target.value)}
+                        />
                       </div>
                     </div>
                   ))}
