@@ -476,10 +476,10 @@ export default function Tournaments() {
                   <div className="flex flex-col sm:flex-row gap-2">
                     {isRegistrationOpen(tournament) ? (
                       <Button className="flex-1 text-sm" asChild>
-                        <a href="#register">
+                        <Link href={`/tournament/${tournament.id}/register`}>
                           <Plus className="h-4 w-4 mr-2" />
                           Register Team
-                        </a>
+                        </Link>
                       </Button>
                     ) : (
                       <Button variant="outline" className="flex-1 text-sm" disabled>
@@ -531,16 +531,32 @@ export default function Tournaments() {
                   Register your team today and be part of the exciting cricket action at Tunda Sports Club.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
-                    <a href="#register">
-                      <Plus className="h-5 w-5 mr-2" />
-                      Register Your Team
-                    </a>
-                  </Button>
+                  {(() => {
+                    // Find the first tournament that's open for registration
+                    const openTournament = tournaments.find(t => isRegistrationOpen(t))
+                    
+                    if (openTournament) {
+                      return (
+                        <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
+                          <Link href={`/tournament/${openTournament.id}/register`}>
+                            <Plus className="h-5 w-5 mr-2" />
+                            Register for {openTournament.name}
+                          </Link>
+                        </Button>
+                      )
+                    } else {
+                      return (
+                        <Button size="lg" variant="outline" disabled>
+                          <Plus className="h-5 w-5 mr-2" />
+                          No Open Tournaments
+                        </Button>
+                      )
+                    }
+                  })()}
                   <Button variant="outline" size="lg" asChild>
-                    <a href="#contact">
+                    <Link href="#contact">
                       Contact Us
-                    </a>
+                    </Link>
                   </Button>
                 </div>
               </CardContent>
