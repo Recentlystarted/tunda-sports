@@ -86,7 +86,9 @@ const TUNDA_LOCATIONS = ["Tunda Cricket Ground", "Custom Location"];
 interface Organizer {
   name: string;
   role: string;
-  contact: string;
+  phone?: string;
+  email?: string;
+  contact?: string; // Keep for backward compatibility
   customRole?: string;
 }
 
@@ -161,7 +163,7 @@ export default function EditTournamentPage() {
   const [registrationDeadline, setRegistrationDeadline] = useState<Date>();
 
   const [organizers, setOrganizers] = useState<Organizer[]>([
-    { name: "", role: "", contact: "", customRole: "" },
+    { name: "", role: "", phone: "", email: "", customRole: "" },
   ]);
   const [winners, setWinners] = useState<Winner[]>([
     { position: 1, prize: "" },
@@ -299,13 +301,14 @@ export default function EditTournamentPage() {
               ? organizersData.map((org: any) => ({
                   name: org.name || "",
                   role: org.role || "",
-                  contact: org.contact || "",
+                  phone: org.phone || org.contact || "", // Use phone if available, fallback to contact for backward compatibility
+                  email: org.email || "",
                   customRole: org.customRole || ""
                 }))
-              : [{ name: "", role: "", contact: "", customRole: "" }]
+              : [{ name: "", role: "", phone: "", email: "", customRole: "" }]
           );
         } catch {
-          setOrganizers([{ name: "", role: "", contact: "", customRole: "" }]);
+          setOrganizers([{ name: "", role: "", phone: "", email: "", customRole: "" }]);
         } // Parse winners from JSON string
         try {
           const winnersData = tournament.winners
@@ -426,7 +429,7 @@ export default function EditTournamentPage() {
   }
 
   const addOrganizer = () => {
-    setOrganizers([...organizers, { name: "", role: "", contact: "", customRole: "" }]);
+    setOrganizers([...organizers, { name: "", role: "", phone: "", email: "", customRole: "" }]);
   };
 
   const removeOrganizer = (index: number) => {
@@ -514,7 +517,9 @@ export default function EditTournamentPage() {
             organizers.filter((org) => org.name.trim()).map(org => ({
               name: org.name,
               role: org.role === 'Custom Role' ? org.customRole : org.role,
-              contact: org.contact
+              phone: org.phone || "",
+              email: org.email || "",
+              contact: org.phone || org.email || "" // Backward compatibility
             }))
           ),
           winners: JSON.stringify(winners.filter((w) => w.prize.trim())),
@@ -1408,14 +1413,13 @@ export default function EditTournamentPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Contact</Label>
+                  <Label>Phone Number</Label>
                   <div className="flex gap-2">
-                    <Input
-                      value={organizer.contact}
-                      onChange={(e) =>
-                        updateOrganizer(index, "contact", e.target.value)
-                      }
-                      placeholder="Phone/Email"
+                    <PhoneInput
+                      label=""
+                      value={organizer.phone || ""}
+                      onChange={(value) => updateOrganizer(index, "phone", value)}
+                      placeholder="Enter 10-digit mobile number"
                     />
                     {organizers.length > 1 && (
                       <Button
@@ -1428,6 +1432,15 @@ export default function EditTournamentPage() {
                       </Button>
                     )}
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Email (Optional)</Label>
+                  <Input
+                    type="email"
+                    value={organizer.email || ""}
+                    onChange={(e) => updateOrganizer(index, "email", e.target.value)}
+                    placeholder="Email address"
+                  />
                 </div>
               </div>
             ))}
